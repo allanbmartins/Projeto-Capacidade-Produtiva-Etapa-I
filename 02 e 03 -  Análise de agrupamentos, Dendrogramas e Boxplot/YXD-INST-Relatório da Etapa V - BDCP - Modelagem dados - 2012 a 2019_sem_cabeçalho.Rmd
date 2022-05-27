@@ -1,0 +1,566 @@
+---
+title: "Projeto de Capacidade Produtiva"
+subtitle: FALSE
+author: "Allan B. Martins"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+    html_document:
+      highlight: espresso
+      includes:
+        in_header: cabecalhofinal_branco.html
+      theme: flatly
+      number_sections: TRUE
+      toc: TRUE
+      toc_float:
+        collapsed: TRUE
+        smooth_scroll: TRUE
+---
+
+```{r Pacotes, warning = FALSE, message = FALSE, echo = FALSE}
+library(dplyr)#pacote mais útil para realizar transformação de dados.  
+library(tidyverse)#pacote guarda-chuva que consolida uma série de ferramentas que fazem parte o ciclo da ciência de dados.  
+library(cluster)# Métodos de análise de cluster.  
+library(factoextra)#Fornece algumas funções fáceis de usar para extrair e visualizar a saída de análises de dados multivariadas.  
+library(readxl)#O pacote readxl facilita a obtenção de dados do Excel e para o R.  
+library(rstatix)#Provides a simple and intuitive pipe-friendly framework, for performing basic   statistical tests.  
+library(emmeans)# Pacote para obter médias marginais estimadas (EMMs) para muitos modelos lineares, lineares generalizados e mistos.  
+library(ggplot2)#Um sistema para a criação 'declarativa' de gráficos, baseado na "Gramática dos Gráficos".    
+library(knitr)#Fornece uma ferramenta de uso geral para geração de relatórios dinâmicos em R usando técnicas de programação literária.    
+library(kableExtra)#Construa tabelas complexas em HTML ou 'LaTeX' usando 'kable ()' de 'knitr' e a sintaxe de tubulação de 'magrittr'.    
+library(htmltools)#Ferramentas para geração e saída de HTML.    
+library(zoo)#Uma classe S3 com métodos para observações indexadas totalmente ordenadas.    
+library(lmtest)#Uma coleção de testes, conjuntos de dados e exemplos para verificação diagnóstica em modelos de regressão linear.  
+library(rmarkdown)#Converta documentos R Markdown em uma variedade de formatos.  
+library(cowplot)#Fornece vários recursos que ajudam a criar figuras de qualidade de publicação com 'ggplot2'.  
+```
+
+```{r Item PT, warning = FALSE, message = FALSE, echo = FALSE}
+pt <- ("Y31D")
+
+legendas_pt <- read_excel("D:/01_Digea/02_Proj/02_Proj_CP/01 Fase I/10_5_Etapa_v2/00_Dicionário de Dados_CAMPO_Y.xlsx", sheet=2, col_names=TRUE)
+
+pt_2 <- legendas_pt %>% filter(legendas_pt$yx_tp==pt)
+```
+
+# Etapa V - Modelagem dos dados - 2012 a 2019 - **`r pt` - `r pt_2$descricao_y1_yx`**  {-}
+
+# Contextualização  {-}
+
+O banco de dados analisado traz os dados de instrumentos , força de trabalho de instrumentos e despesa de custeio total da série temporal de **2012 a 2019** e  utilizando por meio da **Regressão Linear Múltipla**, foi definido através de métrica **03 Conglomerados de Estados**, serão rodados 81 modelos de Regressão Linear Múltipla, ou seja, um modelo para cada conglomerado, para cada um dos 81 itens do Plano de Trabalho. 
+Ao todo, serão 03 UF x 81 modelos, totalizando-se 243 modelos de regressão rodados, nessa primeira fase de modelagem o objetivo é entregar aos colegas do projeto, os resultados da saída **"summary"**, bem como as análises de resíduos [**testes de normalidade**, **testes de homocedasticidade**, **teste de independência dos resíduos**]  e os respectivos **gráficos de resíduos**.
+
+```{r Leitura banco de dedos completo, warning = FALSE, message = FALSE, echo = FALSE}
+setwd("D:/01_Digea/02_Proj/02_Proj_CP/01 Fase I/10_5_Etapa_v2")
+
+bdcp_2012_2019 <- read_excel("D:/01_Digea/02_Proj/02_Proj_CP/01 Fase I/10_5_Etapa_v2/01_BDCP_Estrutura_INST_PER_2012_2019.xlsx", sheet=1, col_names=TRUE)
+```
+
+
+```{r Leitura e tipos de variáveis, warning = FALSE, message = FALSE, echo = FALSE}
+
+#Fazer estruturas de repetição para filtar os dados da estrutura bdcp.
+
+i <- (0) #Reinicializar variável de incremento.
+
+ano_i <- (2012) #Ano inicial do range.
+ano_f <- (2019) #Ano final do range.
+
+temp <- (0) #Reinicializar variável temporária.
+uf <- bdcp_2012_2019 %>% filter(bdcp_2012_2019$ANO==2012) %>% select(UF) #Variável para rownames
+
+#library(dplyr)
+#library(tidyverse)
+
+for (i in (ano_i:ano_f)){ #filtrar em loop somente os registro pelos exercícios , colunas de UF, força de trabalho e custeio total.
+    temp <- bdcp_2012_2019 %>% filter(bdcp_2012_2019$ANO==i) %>% select(UF, XFTTOT, X2CusteioT)
+    temp <- column_to_rownames(temp, var = "UF")
+    assign(paste0("for_cust_", i), temp )
+}
+
+#Consolidado do periódo.
+for_cust_2012_2019 <- data.frame(uf, 
+                                 for_cust_2012$XFTTOT, 
+                                 for_cust_2013$XFTTOT,
+                                 for_cust_2014$XFTTOT,
+                                 for_cust_2015$XFTTOT,
+                                 for_cust_2016$XFTTOT,
+                                 for_cust_2017$XFTTOT,
+                                 for_cust_2018$XFTTOT,
+                                 for_cust_2019$XFTTOT,
+                                 for_cust_2012$X2CusteioT,
+                                 for_cust_2013$X2CusteioT,
+                                 for_cust_2014$X2CusteioT,
+                                 for_cust_2015$X2CusteioT,
+                                 for_cust_2016$X2CusteioT,
+                                 for_cust_2017$X2CusteioT,
+                                 for_cust_2018$X2CusteioT,
+                                 for_cust_2019$X2CusteioT,
+                                 row.names = 1)
+remove(for_cust_2012,
+                                 for_cust_2013,
+                                 for_cust_2014,
+                                 for_cust_2015,
+                                 for_cust_2016,
+                                 for_cust_2017,
+                                 for_cust_2018,
+                                 for_cust_2019,
+                                 for_cust_2012,
+                                 for_cust_2013,
+                                 for_cust_2014,
+                                 for_cust_2015,
+                                 for_cust_2016,
+                                 for_cust_2017,
+                                 for_cust_2018,
+                                 for_cust_2019)
+
+```
+
+
+# Definição de Conglomerados  {.tabset .tabset-fade}
+
+## Dendrograma Conglomerados
+```{r Dendrograma de conglomerados1, warning = FALSE, message = FALSE, include = FALSE, fig.fullwidth = TRUE}
+
+options(scipen=999)
+dist(for_cust_2012_2019)
+
+for_cust_2012_2019.complete <- hclust(dist(for_cust_2012_2019), method="complete")
+```
+
+```{r Dendrograma de conglomerados2, warning = FALSE, message = FALSE, echo = FALSE, fig.fullwidth = TRUE}
+
+plot(for_cust_2012_2019.complete, main="A função do algoritmo HC - Complete Linkage, com 3 clusters", xlab="", sub="", cex=.9, hang=-1)
+abline(h=10000000, lty=2, lwd=2, col = "#E31A1C")
+```
+
+O **dendrograma** acima foi construído para facilitar a definição de **03 conglomerados de Estados** para uma melhor modelagem de dados, devido o Estado de **São Paulo** ser um **outlier**, ele foi incorporado no **conglomerado 3**, ficando a seguinte configuração dos conglomerados: **1 - (AC,AL,AP,PB,PI,RN,RO,RR,SE,TO)**, **2 - (AM,CE,ES,GO,MA,MS,PA,PE)** e **3 - (BA,MG,MT,PR,RJ,RS,SC,SP)**.
+  
+## Boxplot Conglomerados
+```{r Boxplot conglomerados, warning = FALSE, message = FALSE, echo = FALSE, fig.fullwidth = TRUE}
+
+bdcp_2012_2019_boxplot <- bdcp_2012_2019 %>% filter(ANO<="2019") %>% select(ANO, UF,Cluster, XFTTOT, X2CusteioT)
+
+bdcp_2012_2019_boxplot <- transform(bdcp_2012_2019_boxplot,Cluster = as.factor(Cluster))
+
+b1 <- ggplot(bdcp_2012_2019_boxplot, aes(Cluster, XFTTOT, fill = Cluster))+ 
+        geom_boxplot(outlier.color = "red", show.legend = F, alpha = .5)+
+        #ggtitle('Boxplot conglomerados 2012 a 2019')+
+        theme_classic(base_size = 12) +
+        xlab("Conglomerados") + 
+        ylab("Força Trabalho Total")
+
+b2 <-  ggplot(bdcp_2012_2019_boxplot, aes(Cluster, (X2CusteioT), fill = Cluster))+ 
+        geom_boxplot(outlier.color = "red", show.legend = F, alpha = .5)+
+        #ggtitle('Boxplot conglomerados 2012 a 2019')+
+        theme_classic(base_size = 12) +
+        xlab("Conglomerados") + 
+        ylab("Desp. Custeio Total")        
+
+plot_grid(b1, b2, main="Boxplot conglomerados 2012 a 2019", ncol = 2, nrow = 1,rel_widths = c(1, 1))
+```
+
+O **boxplot** acima foi construído com as variáveis **Força de trabalho Total** e **Desp. Custeio Total**, para uma melhor identificação de tamanho de cada conglomerado. 
+
+
+```{r Filtro dos dados necessários, warning = FALSE, message = FALSE, echo = FALSE}
+
+cg1 <- c("AC","AL","AP","PB","PI","RN","RO","RR","SE","TO")
+cg2 <- c("AM","CE","ES","GO","MA","MS","PA","PE")
+cg3 <- c("BA","MG","MT","PR","RJ","RS","SC","SP")
+
+i <- (0) #Reinicializar variável de incremento.
+ano2 <- (2019)
+temp <- (0) #Reinicializar variável temporária.
+
+for (i in (1:3)){ #filtrar em loop somente os registro pelos clusters.
+    temp <- bdcp_2012_2019 %>% filter(ANO<="2019", Cluster==i) %>% select(ANO, UF, X1FTINST, X2CusteioT,pt)
+    assign(paste0("bdcp_2012_2019_", i), temp)
+}
+```
+
+# Análises por conglomerado {.tabset .tabset-fade .tabset-pills}
+
+## Conglomerado 1
+
+```{r Conglomerado 1, warning = FALSE, message = FALSE, echo = FALSE}
+glimpse(bdcp_2012_2019_1)
+```
+
+```{r Visualização banco 1, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bdcp_2012_2019_1, 08), col.names = c("ANO", "UF", "FORÇA DE TRABALHO PERIÓDICA", "DESPESA DE CUSTEIO", pt_2$descricao_y1_yx)) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+### A UF (**`r cg1`**) e o item do Plano de trabalho (**`r pt` - `r pt_2$descricao_y1_yx`**) que estão sendo analisados nos teste a seguir.  
+  
+  
+#### Ajustar o modelo linear com intercepto
+
+##### Estatística de descritivas
+
+```{r Ajustar o modelo linear com intercepto 1, warning = FALSE, message = FALSE}
+
+options(scipen=999)
+Mod1<-lm(Y31D~X1FTINST+X2CusteioT, bdcp_2012_2019_1) #Ajustar o modelo linear com intercepto
+summary(Mod1)   #Obter as estatísticas descritivas do modelo ajustado 
+```
+
+#### Gráfico de dispersão
+
+```{r graficos variáveis 1, warning = FALSE, message = FALSE, echo = FALSE}
+
+g1 <- ggplot(bdcp_2012_2019_1, aes(x= X1FTINST, y=Y31D))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="FORÇA TRAB. INST",
+       y=pt_2, 
+       title= paste("FORÇA TRAB. INST. x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  
+g2 <- ggplot(bdcp_2012_2019_1, aes(x= (X2CusteioT/1000), y=Y31D))+
+  geom_point(col="red", size = 3)+
+   geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+  labs(x="DESPESA CUSTEIO",
+       y=pt_2, 
+       title= paste("DESP. CUSTEIO/1000 x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  #geom_line(aes(x= X2CusteioT/1000, y=Y31D),stat = "smooth", method = "lm")
+  #theme(axis.text.x = element_text(size = 14, angle = 90, vjust = 0.5))
+
+plot_grid(g1, g2, ncol = 1, nrow = 2)
+```
+
+#### Proceder à análise de resíduos    
+
+##### Gráfico de resíduos  
+```{r Proceder à análise de resíduos 1 , warning = FALSE, message = FALSE, echo = FALSE}
+
+plot(residuals(Mod1))
+```
+
+   
+#### Testar normalidade dos resíduos  
+
+```{r Testar normalidade dos resíduos 1, warning = FALSE, message = FALSE}
+
+shapiro.test(residuals(Mod1))  
+```
+
+#### Teste de homocedasticidade:
+
+
+##### Teste de Goldefeld-Quandt {.tabset .tabset-fade}
+
+```{r Teste de Goldefeld-Quandt 1, warning = FALSE, message = FALSE}
+
+gqtest(Mod1)
+```
+
+##### Teste de independência dos resíduos  
+
+```{r Teste de independência dos resíduos 1, warning = FALSE, message = FALSE}
+dwtest(Mod1)    
+```
+
+##### Gráfico para avaliar os resíduos 
+
+###### Análise gráfica
+```{r Inserir gráficos para avaliar os resíduos 1, warning = FALSE, message = FALSE, echo = FALSE}
+par(mfrow=c(2,2))
+plot(Mod1)
+```
+
+##### Gráfico do observado (y) versus predito  
+
+```{r Inserir gráfico do observado (y) versus predito 1, warning = FALSE, message = FALSE, echo = FALSE}
+
+ggplot(bdcp_2012_2019_1, aes(x= Y31D, y=Mod1$fitted.values))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="Preditos",
+       y="Observados", 
+       title= "Gráfico de valores observados versus preditos")+
+  theme_bw()
+```
+
+##### Agregar os resultados no data.frame
+
+```{r Agregar os resultados no data.frame 1, warning = FALSE, message = FALSE, echo = FALSE}
+
+assign(paste0("bd_Modelo_linear","_1"), data.frame(bdcp_2012_2019_1$X1FTINST,bdcp_2012_2019_1$X2CusteioT,bdcp_2012_2019_1$Y31D,Mod1$fitted.values, Mod1$residuals))
+```
+
+```{r Visualização de data.frame 1, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bd_Modelo_linear_1, 08), col.names = c("Força de Trabalho", "Custeio Total", pt_2$descricao_y1_yx, "Mod1.fitted.values", "Mod1.residual")) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+## Conglomerado 2  
+
+
+```{r Conglomerado 2, warning = FALSE, message = FALSE, echo = FALSE}
+glimpse(bdcp_2012_2019_2)
+```
+
+```{r Visualização banco 2, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bdcp_2012_2019_2, 08), col.names = c("ANO", "UF", "FORÇA DE TRABALHO PERIÓDICA", "DESPESA DE CUSTEIO", pt_2$descricao_y1_yx)) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+### A UF (**`r cg2`**) e o item do Plano de trabalho (**`r pt` - `r pt_2$descricao_y1_yx`**) que estão sendo analisados nos teste a seguir.  
+  
+  
+#### Ajustar o modelo linear com intercepto
+
+##### Estatística de descritivas
+
+```{r Ajustar o modelo linear com intercepto 2, warning = FALSE, message = FALSE}
+
+options(scipen=999)
+Mod2<-lm(Y31D~X1FTINST+X2CusteioT, bdcp_2012_2019_2) #Ajustar o modelo linear com intercepto
+summary(Mod2)   #Obter as estatísticas descritivas do modelo ajustado 
+```
+
+#### Gráfico de dispersão
+
+```{r graficos variáveis 2, warning = FALSE, message = FALSE, echo = FALSE}
+
+g1 <- ggplot(bdcp_2012_2019_2, aes(x= X1FTINST, y=Y31D))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="FORÇA TRAB. INST",
+       y=pt_2, 
+       title= paste("FORÇA TRAB. INST. x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  
+
+g2 <- ggplot(bdcp_2012_2019_2, aes(x= (X2CusteioT/1000), y=Y31D))+
+  geom_point(col="red", size = 3)+
+   geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+  labs(x="DESPESA CUSTEIO",
+       y=pt_2, 
+       title= paste("DESP. CUSTEIO/1000 x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  #geom_line(aes(x= X2CusteioT/1000, y=Y31D),stat = "smooth", method = "lm")
+  #theme(axis.text.x = element_text(size = 14, angle = 90, vjust = 0.5))
+
+plot_grid(g1, g2, ncol = 1, nrow = 2)
+```
+
+#### Proceder à análise de resíduos    
+
+##### Gráfico de resíduos  
+```{r Proceder à análise de resíduos 2 , warning = FALSE, message = FALSE, echo = FALSE}
+
+plot(residuals(Mod2))
+```
+
+   
+#### Testar normalidade dos resíduos  
+
+```{r Testar normalidade dos resíduos 2, warning = FALSE, message = FALSE}
+
+shapiro.test(residuals(Mod2))  
+```
+
+  
+#### Teste de homocedasticidade:
+
+
+##### Teste de Goldefeld-Quandt {.tabset .tabset-fade}
+
+```{r Teste de Goldefeld-Quandt 2, warning = FALSE, message = FALSE}
+
+gqtest(Mod2)
+```
+
+##### Teste de independência dos resíduos  
+
+```{r Teste de independência dos resíduos 2, warning = FALSE, message = FALSE}
+dwtest(Mod2)    
+```
+  
+##### Gráfico para avaliar os resíduos 
+
+###### Análise gráfica
+```{r Inserir gráficos para avaliar os resíduos 2, warning = FALSE, message = FALSE, echo = FALSE}
+par(mfrow=c(2,2))
+plot(Mod2)
+```
+
+##### Gráfico do observado (y) versus predito  
+
+```{r Inserir gráfico do observado (y) versus predito 2, warning = FALSE, message = FALSE, echo = FALSE}
+
+ggplot(bdcp_2012_2019_2, aes(x= Y31D, y=Mod2$fitted.values))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="Preditos",
+       y="Observados", 
+       title= "Gráfico de valores observados versus preditos")+
+  theme_bw()
+```
+
+##### Agregar os resultados no data.frame
+
+```{r Agregar os resultados no data.frame 2, warning = FALSE, message = FALSE, echo = FALSE}
+
+assign(paste0("bd_Modelo_linear","_2"), data.frame(bdcp_2012_2019_2$X1FTINST,bdcp_2012_2019_2$X2CusteioT,bdcp_2012_2019_2$Y31D,Mod2$fitted.values, Mod2$residuals))
+```
+
+```{r Visualização de data.frame 2, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bd_Modelo_linear_2, 08), col.names = c("Força de Trabalho", "Custeio Total", pt_2$descricao_y1_yx, "Mod2.fitted.values", "Mod2.residual")) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+## Conglomerado 3  
+
+
+```{r Conglomerado 3, warning = FALSE, message = FALSE, echo = FALSE}
+glimpse(bdcp_2012_2019_3)
+```
+
+```{r Visualização banco 3, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bdcp_2012_2019_3, 08), col.names = c("ANO", "UF", "FORÇA DE TRABALHO PERIÓDICA", "DESPESA DE CUSTEIO", pt_2$descricao_y1_yx)) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+### A UF (**`r cg3`**) e o item do Plano de trabalho (**`r pt` - `r pt_2$descricao_y1_yx`**) que estão sendo analisados nos teste a seguir.  
+  
+  
+#### Ajustar o modelo linear com intercepto
+
+##### Estatística de descritivas
+
+```{r Ajustar o modelo linear com intercepto 3, warning = FALSE, message = FALSE}
+
+options(scipen=999)
+Mod3<-lm(Y31D~X1FTINST+X2CusteioT, bdcp_2012_2019_3) #Ajustar o modelo linear com intercepto
+summary(Mod3)   #Obter as estatísticas descritivas do modelo ajustado 
+```
+
+#### Gráfico de dispersão
+
+```{r graficos variáveis 3, warning = FALSE, message = FALSE, echo = FALSE}
+
+g1 <- ggplot(bdcp_2012_2019_3, aes(x= X1FTINST, y=Y31D))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="FORÇA TRAB. INST",
+       y=pt_2, 
+       title= paste("FORÇA TRAB. INST. x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  
+
+g2 <- ggplot(bdcp_2012_2019_3, aes(x= (X2CusteioT/1000), y=Y31D))+
+  geom_point(col="red", size = 3)+
+   geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+  labs(x="DESPESA CUSTEIO",
+       y=pt_2, 
+       title= paste("DESP. CUSTEIO/1000 x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  #geom_line(aes(x= X2CusteioT/1000, y=Y31D),stat = "smooth", method = "lm")
+  #theme(axis.text.x = element_text(size = 14, angle = 90, vjust = 0.5))
+
+plot_grid(g1, g2, ncol = 1, nrow = 2)
+```
+
+#### Proceder à análise de resíduos    
+
+##### Gráfico de resíduos  
+```{r Proceder à análise de resíduos 3 , warning = FALSE, message = FALSE, echo = FALSE}
+
+plot(residuals(Mod3))
+```
+
+   
+#### Testar normalidade dos resíduos  
+
+```{r Testar normalidade dos resíduos 3, warning = FALSE, message = FALSE}
+
+shapiro.test(residuals(Mod3))  
+```
+
+#### Teste de homocedasticidade:
+
+
+##### Teste de Goldefeld-Quandt {.tabset .tabset-fade}
+
+```{r Teste de Goldefeld-Quandt 3, warning = FALSE, message = FALSE}
+
+gqtest(Mod3)
+```
+
+##### Teste de independência dos resíduos  
+
+```{r Teste de independência dos resíduos 3, warning = FALSE, message = FALSE}
+dwtest(Mod3)    
+```
+
+##### Gráfico para avaliar os resíduos 
+
+###### Análise gráfica
+```{r Inserir gráficos para avaliar os resíduos 3, warning = FALSE, message = FALSE, echo = FALSE}
+par(mfrow=c(2,2))
+plot(Mod3)
+```
+
+##### Gráfico do observado (y) versus predito  
+
+```{r Inserir gráfico do observado (y) versus predito 3, warning = FALSE, message = FALSE, echo = FALSE}
+
+ggplot(bdcp_2012_2019_3, aes(x= Y31D, y=Mod3$fitted.values))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="Preditos",
+       y="Observados", 
+       title= "Gráfico de valores observados versus preditos")+
+  theme_bw()
+```
+
+##### Agregar os resultados no data.frame
+
+```{r Agregar os resultados no data.frame 3, warning = FALSE, message = FALSE, echo = FALSE}
+
+assign(paste0("bd_Modelo_linear","_3"), data.frame(bdcp_2012_2019_3$X1FTINST,bdcp_2012_2019_3$X2CusteioT,bdcp_2012_2019_3$Y31D,Mod3$fitted.values, Mod3$residuals))
+```
+
+```{r Visualização de data.frame 3, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bd_Modelo_linear_3, 08), col.names = c("Força de Trabalho", "Custeio Total", pt_2$descricao_y1_yx, "Mod3.fitted.values", "Mod3.residual")) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+# Diversos {.tabset .tabset-fade}
+
+## Créditos - Participantes do Projeto Capacidade Produtiva:  
+  
+**PATROCINADORES DO PROJETO**  
+##
+
+**COORDENADORES DO PROJETO**  
+## 
+
+**MEMBROS DO PROJETO**  
+Allan Batista Martins,  
+##
+  
+
+
+## Material de Apoio  
+
+
+* Criando dendogramas com o R: [Fabio Machry](http://rstudio-pubs-static.s3.amazonaws.com/311400_8b041824d53046b89952fae6a60ace3b.html)  
+
+* Regressão linear múltipla no R: [Fernanda Peres](https://youtu.be/4YLOwyx_hxo)  
+
+* PLAYLIST - Criando gráficos no R com o ggplot2 (Parte 1 ao 2): [Fernanda Peres](https://youtu.be/DYsPRa3vpf0)  
+
+* PLAYLIST - R Markdown: Gerando relatórios usando o R (Parte 1 ao 5): [Fernanda Peres](https://youtu.be/obxa5VH4WvY)  
+
+* Minicurso R - UFPR: [UFPR](https://youtu.be/obxa5VH4WvY)  
+
+* R Markdown: The Definitive Guide: [Yihui Xie, J. J. Allaire, Garrett Grolemund](https://bookdown.org/yihui/rmarkdown/)
+
+  
