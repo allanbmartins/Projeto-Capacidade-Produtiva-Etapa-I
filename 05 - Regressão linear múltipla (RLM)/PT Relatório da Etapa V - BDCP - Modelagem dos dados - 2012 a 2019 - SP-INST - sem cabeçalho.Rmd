@@ -1,0 +1,236 @@
+---
+title: "Projeto de Capacidade Produtiva"
+subtitle: "Etapa V - Modelagem dos dados - 2012 a 2019 - SP - (Y31D-OUTROS SERVIÇOS)"
+author: "Allan B. Martins"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+    html_document:
+       #highlight: textmate
+       highlight: espresso
+       includes:
+         in_header: "cabecalhofinal_branco.html"
+       theme: flatly
+       number_sections: yes
+       toc: yes
+       toc_float:
+         collapsed: yes
+         smooth_scroll: false
+---
+
+# Contextualização
+
+O banco de dados analisado traz os dados de instrumentos, força de trabalho e despesa de custeio da série temporal de **2012 a 2019** e  utilizando por meio da **Regressão Linear Múltipla**, para cada **UF**, serão rodados 81 modelos de Regressão Linear Múltipla, ou seja, um modelo por UF, para cada um dos 81 itens do Plano de Planejamnto de Técnico. 
+Ao todo, serão 26 UF x 81 modelos, totalizando-se 2.106 modelos de regressão rodados, nessa primeira fase de modelagem o objetivo é entregar aos colegas dos  Escritórios, os resultados da saída **"summary"**, bem como as análises de resíduos [**testes de normalidade**, **testes de homocedasticidade**, **teste de independência dos resíduos**]  e os respectivos **gráficos de resíduos**.
+
+
+
+# Carregamento dos pacotes
+
+```{r pacotes, warning=FALSE, message=FALSE}
+library(dplyr)
+library(readxl) 
+library(rstatix)  
+library(emmeans)  
+library(ggplot2)  
+library(knitr)  
+library(kableExtra)  
+library(htmltools)  
+library(zoo)  
+library(lmtest)
+library(rmarkdown)
+library(cowplot)
+```
+
+# Leitura e visualização do banco de dados
+
+```{r Leitura e tipos de variáveis, warning = FALSE, message = FALSE, echo = FALSE}
+
+bdcp_2012_2021 <- read_excel("D:/01_Digea/02_Proj/02_Proj_CP/01 Fase I/01_BDCP_Estrutura_INST_PER_2012_2021.xlsx", sheet=1, col_names=TRUE)
+
+
+```
+
+
+```{r Filtro dos dados necessários, warning = FALSE, message = FALSE, echo = FALSE}
+
+uf <- ("SP")
+pt <- ("Y31D")
+bdcp_2012_2019 <- bdcp_2012_2021 %>% filter(UF==uf, ANO<="2019") %>% select(ANO, UF, X1FTINST, X2CusteioT,pt)
+glimpse(bdcp_2012_2019)
+```
+
+```{r Legendas, warning = FALSE, message = FALSE, echo = FALSE}
+
+legendas_pt <- read_excel("D:/01_Digea/02_Proj/02_Proj_CP/01 Fase I//00_Dicionário de Dados_CAMPO_Y.xlsx", sheet=2, col_names=TRUE)
+pt_2 <- legendas_pt %>% filter(legendas_pt$yx_tp==pt)
+```
+
+```{r Visualização banco, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bdcp_2012_2019, 08), col.names = c("ANO", "UF", "FORÇA DE TRABALHO PERIÓDICA", "DESPESA DE CUSTEIO", pt_2$descricao_y1_yx)) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+# A UF (**`r uf`**) e o item do Plano de trabalho (**`r pt` - `r pt_2$descricao_y1_yx`**) que estão sendo analisados nos teste a seguir.  
+  
+  
+## Ajustar o modelo linear com intercepto {.tabset .tabset-fade}
+
+### Estatística de descritivas
+
+```{r Ajustar o modelo linear com intercepto, warning = FALSE, message = FALSE}
+
+options(scipen=999)
+Mod1<-lm(Y31D~X1FTINST+X2CusteioT, bdcp_2012_2019) #Ajustar o modelo linear com intercepto
+summary(Mod1)   #Obter as estatísticas descritivas do modelo ajustado 
+```
+
+### Gráfico de dispersão
+
+```{r graficos variáveis, warning = FALSE, message = FALSE, echo = FALSE}
+
+g1 <- ggplot(bdcp_2012_2019, aes(x= X1FTINST, y=Y31D))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="FORÇA TRAB. INST",
+       y=pt_2, 
+       title= paste("FORÇA TRAB. INST. x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  
+
+g2 <- ggplot(bdcp_2012_2019, aes(x= (X2CusteioT/1000), y=Y31D))+
+  geom_point(col="red", size = 3)+
+   geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+  labs(x="DESPESA CUSTEIO",
+       y=pt_2, 
+       title= paste("DESP. CUSTEIO/1000 x ",  pt_2$descricao_y1_yx, sep = ' '))+
+  theme_bw()
+  #geom_line(aes(x= X2CusteioT/1000, y=Y31D),stat = "smooth", method = "lm")
+  #theme(axis.text.x = element_text(size = 14, angle = 90, vjust = 0.5))
+
+plot_grid(g1, g2, ncol = 1, nrow = 2)
+```
+  
+  
+  
+## Proceder à análise de resíduos    
+
+### Gráfico de resíduos  
+```{r Proceder à análise de resíduos, warning = FALSE, message = FALSE, echo = FALSE}
+
+plot(residuals(Mod1))
+```
+
+   
+## Testar normalidade dos resíduos {.tabset .tabset-fade}   
+### Resultado
+```{r Testar normalidade dos resíduos, warning = FALSE, message = FALSE}
+
+shapiro.test(residuals(Mod1))  
+```
+### Crítérios de avaliação
+
+H0: distribuição dos dados = normal -> p > 0.05.  
+H1: distribuição dos dados ≠ normal -> p ≤ 0,05.  
+   
+   
+  
+## Teste de homocedasticidade:
+
+
+### Teste de Goldefeld-Quandt {.tabset .tabset-fade}
+
+#### Resultado
+```{r Teste de Goldefeld-Quandt, warning = FALSE, message = FALSE}
+
+gqtest(Mod1)
+```
+#### Interpretação e crítérios de avaliação
+
+**Aqui está como interpretar a saída:**  
+
+A estatística de teste é resultado de "GQ".  
+O valor p correspondente é resultado de "p".  
+
+**crítérios de avaliação:**
+
+O teste Goldfeld-Quandt usa as seguintes hipóteses nulas e alternativas:  
+  
+Nulo (H 0 ) : Homocedasticidade está presente.  
+Alternativa (H A ): Heteroscedasticidade está presente.  
+  
+Se o valor p não é inferior a 0,05, falhamos em rejeitar a hipótese nula. Não temos evidências suficientes para dizer que a heterocedasticidade está presente no modelo de regressão.
+  
+### Teste de independência dos resíduos  
+
+```{r Teste de independência dos resíduos, warning = FALSE, message = FALSE}
+dwtest(Mod1)    
+```
+  
+  
+### Inserir gráficos para avaliar os resíduos  {.tabset .tabset-fade} 
+
+#### Análise gráfica
+```{r Inserir gráficos para avaliar os resíduos, warning = FALSE, message = FALSE, echo = FALSE}
+par(mfrow=c(2,2))
+plot(Mod1)
+```
+
+#### Considerações sobre os gráficos  
+
+1º Gráfico (da direita para a esquerda 1ª linha) é pelos resíduos pelos valores ajustados e serve para avaliar o pressuposto de **linearidade** com a linha vermelha aproximadamente na horizontal.  
+  
+2º Gráfico (da direita para a esquerda 1ª linha) apresenta se os resíduos apresentam **distribuição normal** seguindo a linha pontilhada.
+
+3º Gráfico (da direita para a esquerda 2ª linha) apresenta a **homocedasticidade**, se houver, os pontos tem que estar dispersos em um padrão meio que retangular, não pode haver um padrão triangular.  
+
+4º Gráfico (da direita para a  esquerda 2ª linha) apresenta se existem **outliers** e **pontos influentes**, caso existam, vai haver uma linha pontilhada vermelha com esses pontos para fora .
+   
+
+### Inserir gráfico do observado (y) versus predito  
+
+```{r Inserir gráfico do observado (y) versus predito, warning = FALSE, message = FALSE, echo = FALSE}
+
+ggplot(bdcp_2012_2019, aes(x= Y31D, y=Mod1$fitted.values))+
+  geom_point(col="blue", size = 3)+
+  geom_smooth(method = "lm", se = F, color = "black", size = 0.5, linetype = "dashed")+
+    labs(x="Preditos",
+       y="Observados", 
+       title= "Gráfico de valores observados versus preditos")+
+  theme_bw()
+```
+
+## Agregar os resultados no data.frame
+
+```{r Agregar os resultados no data.frame, warning = FALSE, message = FALSE, echo = FALSE}
+
+assign(paste0("bd_Modelo_linear"), data.frame(bdcp_2012_2019$X1FTINST+bdcp_2012_2019$X2CusteioT,bdcp_2012_2019$Y31D,Mod1$fitted.values, Mod1$residuals))
+```
+  
+  
+```{r Visualização de data.frame, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(head(bd_Modelo_linear, 08), col.names = c("X1FTINST...X2CusteioT",pt_2$descricao_y1_yx, "Mod1.fitted.values", "Mod1.residual")) %>% kable_styling(full_width = F, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+# Material de Apoio
+  
+* Regressão linear múltipla no R: [Fernanda Peres](https://youtu.be/4YLOwyx_hxo)
+
+* PLAYLIST - Criando gráficos no R com o ggplot2 (Parte 1 ao 2): [Fernanda Peres](https://youtu.be/DYsPRa3vpf0)
+
+* PLAYLIST - R Markdown: Gerando relatórios usando o R (Parte 1 ao 5): [Fernanda Peres](https://youtu.be/obxa5VH4WvY)
+
+* Minicurso R - UFPR: [UFPR](https://youtu.be/obxa5VH4WvY)
+
+  
+# Créditos - Participantes do Projeto Capacidade Produtiva:  
+  
+**PATROCINADORES DO PROJETO**  
+##
+
+**COORDENADORES DO PROJETO**  
+##  
+
+**MEMBROS DO PROJETO**  
+Allan Batista Martins,  
+##

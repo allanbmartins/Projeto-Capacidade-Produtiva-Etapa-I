@@ -1,0 +1,11 @@
+Procedimentos (Regressão linear múltipla (RLM) e Especificações mínimas do modelo) - Regressão linear múltipla (RLM)
+
+A Regressão Linear Múltipla é um modelo de análise que usamos quando modelamos a relação linear entre uma variável de desfecho contínua e múltiplas variáveis preditoras que podem ser contínuas ou categóricas.
+
+Especificações mínimas do modelo
+
+A análise de regressão gera uma equação para descrever a relação entre uma ou mais variáveis e a variável resposta. Depois de usar o linguagem “R” para ajustar um modelo de regressão e verificar o ajuste através dos gráficos de resíduos, devemos interpretar os valores-p e os coeficientes que aparecem na saída da análise de regressão linear.
+
+O valor-p para cada termo testa a hipótese nula de que o coeficiente é igual a zero (sem efeito). Um valor-p baixo (< 0,05) indica que você pode rejeitar a hipótese nula. Em outras palavras, uma variável que tenha um valor-p baixo provavelmente será significativa ao seu modelo, porque as alterações no valor dela estão relacionadas à alterações na variável resposta.
+
+Por outro lado, um valor-p maior (> 0,05) sugere que as mudanças na variável não estão associadas à mudanças na variável resposta.
