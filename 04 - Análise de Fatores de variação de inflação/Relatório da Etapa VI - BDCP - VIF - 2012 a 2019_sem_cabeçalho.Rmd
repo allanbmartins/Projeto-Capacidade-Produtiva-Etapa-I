@@ -1,0 +1,148 @@
+---
+title: "Projeto de Capacidade Produtiva"
+subtitle: FALSE
+author: "Allan B. Martins"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+    html_document:
+      highlight: espresso
+      includes:
+        in_header: cabecalhofinal_branco.html
+      theme: flatly
+      number_sections: TRUE
+      toc: TRUE
+      toc_float:
+        collapsed: TRUE
+        smooth_scroll: TRUE
+---
+
+```{r Pacotes, warning = FALSE, message = FALSE, echo = FALSE}
+library(dplyr)#pacote mais útil para realizar transformação de dados.  
+library(tidyverse)#pacote guarda-chuva que consolida uma série de ferramentas que fazem parte o ciclo da ciência de dados.  
+library(cluster)# Métodos de análise de cluster.  
+library(factoextra)#Fornece algumas funções fáceis de usar para extrair e visualizar a saída de análises de dados multivariadas.  
+library(readxl)#O pacote readxl facilita a obtenção de dados do Excel e para o R.  
+library(rstatix)#Provides a simple and intuitive pipe-friendly framework, for performing basic   statistical tests.  
+library(emmeans)# Pacote para obter médias marginais estimadas (EMMs) para muitos modelos lineares, lineares generalizados e mistos.  
+library(ggplot2)#Um sistema para a criação 'declarativa' de gráficos, baseado na "Gramática dos Gráficos".    
+library(knitr)#Fornece uma ferramenta de uso geral para geração de relatórios dinâmicos em R usando técnicas de programação literária.    
+library(kableExtra)#Construa tabelas complexas em HTML ou 'LaTeX' usando 'kable ()' de 'knitr' e a sintaxe de tubulação de 'magrittr'.    
+library(htmltools)#Ferramentas para geração e saída de HTML.    
+library(zoo)#Uma classe S3 com métodos para observações indexadas totalmente ordenadas.    
+library(lmtest)#Uma coleção de testes, conjuntos de dados e exemplos para verificação diagnóstica em modelos de regressão linear.  
+library(rmarkdown)#Converta documentos R Markdown em uma variedade de formatos.  
+library(cowplot)#Fornece vários recursos que ajudam a criar figuras de qualidade de publicação com 'ggplot2'. 
+library(faraway) # #Acionar o biblioteca do pacote faraway. 
+library(GGally) #extensão para ggplot2 (matriz de gráfico de pares) 
+```
+
+# Etapa VI - BDUBP - VIF - 2012 a 2019
+
+# Contextualização  {-}
+
+O banco de dados analisado traz os dados de **Força Total de Trabalho**, **Despesa total**, **Despesa de custeio total**, **Frota de Veículos** e **Transferencias Totais** da série temporal de 2012 a 2019.  Por meio das técnicas de **Correlação, variância e covariância (matrizes)** e **Fatores de variação de inflação**, para se identificar as melhores variáveis para próxima etapa do projeto.
+
+
+```{r Leitura do banco de dados completo, warning = FALSE, message = FALSE, echo = FALSE}
+
+setwd("D:/01_Digea/02_Proj/02_Proj_CP/01 Fase I/11_6_Etapa")
+
+bd_ubp_2012_2019 <- read_excel("D:/01_Digea/02_Proj/02_Proj_CP/01 Fase I/11_6_Etapa/modelo_ubp_2012_2019.xlsx", sheet=1, col_names=TRUE)
+
+#str(bd_ubp_2012_2019)
+
+```
+
+
+
+```{r Filtro do banco de dados, warning = FALSE, message = FALSE, echo = FALSE}
+
+options(digits = 3)
+
+bdcp_vif <- bd_ubp_2012_2019 %>% select(x1_ft_tot, x2_desp_tot, x3_cust, x4_frota, x5_transf_tot) #Selecionar somente as posições das colunas de interesse do BDCP
+str(bdcp_vif) #Ver a estrutura dos dados de BDCP
+```
+
+# Correlação, variância e covariância (matrizes)
+```{r Visualização de tab 1, warning = FALSE, message = FALSE, echo = FALSE}
+
+cor_resp <- cor(bdcp_vif)          #Avaliar a correlação entre as variáveis de interesse.
+
+kable(cor_resp, "html") %>%
+   kable_styling(bootstrap_options = c("striped"),
+                full_width = T,
+                font_size = 15) %>%
+   scroll_box(height = "300px")
+```
+
+## Correlograma
+```{r Correlogram 1, warning = FALSE, message = FALSE, echo = FALSE}
+ggpairs(bdcp_vif, title="correlogram with ggpairs()") 
+
+#ggcorr(bdcp_vif, method = c("everything", "pearson"))
+```
+
+
+# Fatores de variação de inflação
+```{r Testar a multicolinearidade dos fatores, warning = FALSE, message = FALSE, echo = FALSE}
+
+#vif_resp <- vif(lm(y1_ubp_tot ~ x1_ft_tot + x2_desp_tot + x3_cust + x4_frota + x5_transf_tot, bdcp_vif))) ## Calcular o VIF  para os fatores de interesse  e salvar no data.frame VIF
+
+vif_resp <- data.frame(vif(bdcp_vif))
+
+#vif_resp
+#write.table(VIF, file="bdcp_vif", row.name=TRUE) #Salvar a Tabela VIF.
+```
+
+```{r Visualização de tab 2, warning = FALSE, message = FALSE, echo = FALSE}
+
+kable(vif_resp, "html") %>%
+   kable_styling(bootstrap_options = c("striped"),
+                full_width = T,
+                font_size = 15) %>%
+   scroll_box(height = "300px")
+```
+
+## Boxplot
+```{r barplot, warning = FALSE, message = FALSE, echo = FALSE}
+
+barplot(height=vif_resp$vif.bdcp_vif., names=c("x1_ft_tot", "x2_desp_tot", "x3_cust", "x4_frota", "x5_transf_tot"), main = "Boxplot DIF",legend.text = TRUE,)
+
+#str(vif_resp)
+```
+
+
+# Diversos {.tabset .tabset-fade}
+
+## Créditos - Participantes do Projeto Capacidade Produtiva:  
+  
+**PATROCINADORES DO PROJETO**  
+##
+
+**COORDENADORES DO PROJETO**  
+## 
+
+**MEMBROS DO PROJETO**  
+Allan Batista Martins,  
+##
+  
+
+
+## Material de Apoio  
+
+
+* Modelos Lineares Múltiplos 4: colinearidade e termos quadráticos: [Alexandre Adalardo de Oliveira](https://youtu.be/62cRvHQzIFc)
+
+* Criando dendogramas com o R: [Fabio Machry](http://rstudio-pubs-static.s3.amazonaws.com/311400_8b041824d53046b89952fae6a60ace3b.html)  
+
+* Regressão linear múltipla no R: [Fernanda Peres](https://youtu.be/4YLOwyx_hxo)  
+
+* PLAYLIST - Criando gráficos no R com o ggplot2 (Parte 1 ao 2): [Fernanda Peres](https://youtu.be/DYsPRa3vpf0)  
+
+* PLAYLIST - R Markdown: Gerando relatórios usando o R (Parte 1 ao 5): [Fernanda Peres](https://youtu.be/obxa5VH4WvY)  
+
+* Minicurso R - UFPR: [UFPR](https://youtu.be/obxa5VH4WvY)  
+
+* R Markdown: The Definitive Guide: [Yihui Xie, J. J. Allaire, Garrett Grolemund](https://bookdown.org/yihui/rmarkdown/)
+
+  

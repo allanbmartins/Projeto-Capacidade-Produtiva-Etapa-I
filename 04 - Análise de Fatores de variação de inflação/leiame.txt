@@ -1,0 +1,1 @@
+Procedimentos de análise de Fatores de variação de inflação - Por meio das técnicas de Correlação, variância e covariância (matrizes) e Fatores de variação de inflação, para se identificar as melhores variáveis para próxima etapa do projeto.
