@@ -1,0 +1,1 @@
+1 - Estruturação do Banco de dados “BDCP” é (y1..x1,x2..) sendo uma variável de produção (dependente) e duas variáveis explicativas (independente), que são os dados do “Produção” Plano de Planejamento de Técnico, despesa de custeio total e da Força de trabalho total e foram obtidas do sistema interno, todos os dados são da respectiva série temporal de 2012 a 2020.
