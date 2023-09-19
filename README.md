@@ -1,7 +1,4 @@
-Proj-Capacidade-Produtiva---Etapa-I
-Proj Capacidade Produtiva - Etapa I
-
-O atual momento de escassez orçamentária/financeira e de pessoal em que se encontra o o mercado, vem exigindo esforços pela busca de métodos de planejamento que otimizem o uso dos recursos, priorizem demandas, aumentem a produtividade e o impacto das ações de supervisão de mercado. 
+# Proj Capacidade Produtiva - Etapa I - O atual momento de escassez orçamentária/financeira e de pessoal em que se encontra o o mercado, vem exigindo esforços pela busca de métodos de planejamento que otimizem o uso dos recursos, priorizem demandas, aumentem a produtividade e o impacto das ações de supervisão de mercado. 
 	O sistema utiliza basicamente três variáveis para estabelecerem suas metas nos Planos de Planejamento Técnico: histórico de execução, quantitativo de pessoal técnico capacitado e disponibilidade financeira.   
 	No entanto, estas variáveis vem se mostrando insuficientes, para produzir um plano de planejamento Técnico que considere o melhor potencial de produtividade, com maior cobertura e impacto nos setores econômicos e nas áreas geográficas que mais necessitam acompanhamento.
 
